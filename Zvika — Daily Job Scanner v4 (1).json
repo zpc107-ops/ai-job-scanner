@@ -1,0 +1,574 @@
+{
+  "name": "Zvika — Daily Job Scanner v4",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "0 0 8 * * 0-5"
+            }
+          ]
+        }
+      },
+      "id": "c81d0dc3-19ae-4be9-886f-6b52bf390071",
+      "name": "Schedule — Weekdays 8am",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "position": [
+        0,
+        0
+      ],
+      "typeVersion": 1.3
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.apify.com/v2/actor-tasks/keyed_wagon~zvika-tpm-scanner/runs",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {}
+          ]
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "Authorization",
+              "value": "Bearer YOUR_APIFY_API_KEY"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "{\n  \"queries\": [\n    \"Release Manager\",\n    \"Technical Project Manager\",\n    \"TPM\",\n    \"IT Project Manager\",\n    \"Program Manager\",\n    \"Delivery Manager\",\n    \"Project Manager\"\n  ],\n  \"location\": \"Israel\",\n  \"maxResults\": 150,\n  \"publishedAt\": \"r86400\"\n}",
+        "options": {}
+      },
+      "id": "b4d5ff58-ef37-4076-95be-421be4d2ee15",
+      "name": "Apify — Trigger Scraper Run",
+      "type": "n8n-nodes-base.httpRequest",
+      "position": [
+        0,
+        128
+      ],
+      "typeVersion": 4.4
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "8a35c86d-d0ae-4e28-a269-f0450797a7a5",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "e8adac5a-23c4-42a2-8a2e-78b137be2401",
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "position": [
+        0,
+        304
+      ],
+      "typeVersion": 2.1,
+      "webhookId": "5165308d-e18d-4f01-9c71-aaef5357fa36"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "id": "d0a09768-1967-4996-94bb-b2b43736d934",
+      "name": "Respond to Webhook",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "position": [
+        240,
+        304
+      ],
+      "typeVersion": 1.5
+    },
+    {
+      "parameters": {
+        "jsCode": "const payload = $input.first().json.body;\nconst runId = payload.resource?.id || payload.eventData?.actorRunId;\n\nif (!runId) {\n  throw new Error('No runId: ' + JSON.stringify(payload));\n}\n\nreturn [{ json: { runId } }];"
+      },
+      "id": "0dd2b4ef-bfd2-48e8-a810-d6ba9c9c16d2",
+      "name": "Extract Dataset ID",
+      "type": "n8n-nodes-base.code",
+      "position": [
+        0,
+        432
+      ],
+      "typeVersion": 2
+    },
+    {
+      "parameters": {
+        "method": "=GET",
+        "url": "=https://api.apify.com/v2/actor-runs/{{$json.runId}}/dataset/items",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "Bearer YOUR_APIFY_API_KEY"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "f9721a4d-e46e-4e1a-b6dd-fffcde5f8833",
+      "name": "Fetch Jobs from Apify",
+      "type": "n8n-nodes-base.httpRequest",
+      "position": [
+        0,
+        544
+      ],
+      "typeVersion": 4.4
+    },
+    {
+      "parameters": {
+        "jsCode": "const items = $input.all();\nconst jobs = items.map(i => i.json).flat();\nif (!Array.isArray(jobs) || jobs.length === 0) return [];\n\nconst seen = new Set();\n\nreturn jobs\n  .filter(j => j.jobTitle && j.jobDescription && j.jobDescription.length > 100)\n  .map(j => ({\n    title: j.jobTitle,\n    company: j.companyName || 'Unknown',\n    location: j.location || 'Israel',\n    description: (j.jobDescription || '').substring(0, 2000),\n    jobUrl: j.jobUrl || j.applyUrl || '',\n    applicantsCount: j.applicationsCount || 'Unknown',\n    postedAt: j.postedTime || j.publishedAt || '',\n    contractType: j.contractType || '',\n    experienceLevel: j.experienceLevel || ''\n  }))\n  .filter(j => {\n    const key = j.jobUrl || (j.title + '|' + j.company);\n    if (seen.has(key)) return false;\n    seen.add(key);\n    return true;\n  })\n  .map(j => ({ json: j }));"
+      },
+      "id": "2b0694ac-aef2-4e98-8bd0-3d68233632ae",
+      "name": "Normalize Jobs",
+      "type": "n8n-nodes-base.code",
+      "position": [
+        0,
+        672
+      ],
+      "typeVersion": 2
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const item = $input.item.json;\n\nlet text = '';\nif (item.content && Array.isArray(item.content)) {\n  text = item.content[0]?.text || '';\n} else if (item.text) {\n  text = item.text;\n} else {\n  text = JSON.stringify(item);\n}\n\nconst clean = text.replace(/```json\\s*/g, '').replace(/```\\s*/g, '').trim();\nconst jsonMatch = clean.match(/\\{[\\s\\S]*\\}/);\nconst jsonStr = jsonMatch ? jsonMatch[0] : clean;\n\nlet analysis;\ntry {\n  analysis = JSON.parse(jsonStr);\n} catch(e) {\n  analysis = { score: 0, parseError: true, rawText: text };\n}\n\n// נסה לשלוף jobUrl מהפרומפט שנשלח\nconst promptText = item.messages?.[0]?.content || '';\nconst urlMatch = promptText.match(/JobUrl:\\s*(https?:\\/\\/[^\\s\\n]+)/);\nconst jobUrl = urlMatch?.[1] || analysis.jobUrl || '';\n\nreturn { json: { \n  ...analysis,\n  score: Number(analysis.score) || 0,\n  jobUrl: jobUrl\n}};"
+      },
+      "id": "4a26f7bd-ddd8-4e39-9f4b-34cb03d4f54f",
+      "name": "Parse Claude Response",
+      "type": "n8n-nodes-base.code",
+      "position": [
+        0,
+        912
+      ],
+      "typeVersion": 2
+    },
+    {
+      "parameters": {
+        "jsCode": "const allItems = $input.all();\nconst aggregated = allItems[0]?.json;\n\nlet jobs = [];\nif (aggregated?.jobs && Array.isArray(aggregated.jobs)) {\n  jobs = aggregated.jobs;\n} else {\n  jobs = allItems.map(i => i.json);\n}\n\njobs = jobs\n  .filter(j => j && !j.parseError)\n  .map(j => ({ ...j, score: Number(j.score) || 0 }))\n  .filter(j => j.score > 0)\n  .sort((a, b) => b.score - a.score);\n\nif (jobs.length === 0) {\n  return [{ json: { html: '<p style=\"font-family:Arial;direction:rtl\">אין משרות מתאימות היום.</p>', count: 0 } }];\n}\n\nconst rows = jobs.map(j => {\n  const color = j.score >= 65 ? '#27500A' : '#633806';\n  const bg    = j.score >= 65 ? '#EAF3DE' : '#FAEEDA';\n  const letter = (j.cover_letter || j.cover_letter_he || '').replace(/\\n/g, '<br>');\n  const improveCv     = (j.improve_cv     || []).map(x => `<li>${x}</li>`).join('');\n  const improveSkills = (j.improve_skills || []).map(x => `<li>${x}</li>`).join('');\n\n  return `\n  <tr style=\"border-bottom:1px solid #ddd\">\n    <td style=\"padding:10px;font-weight:500\">${j.title || ''}</td>\n    <td style=\"padding:10px;color:#555\">${j.company || ''}</td>\n    <td style=\"padding:10px;color:#666\">${j.location || ''}</td>\n    <td style=\"padding:10px;text-align:center\">\n      <span style=\"background:${bg};color:${color};padding:3px 8px;border-radius:12px;font-weight:500\">${j.score}</span>\n    </td>\n    <td style=\"padding:10px\">${j.probability || '-'}</td>\n    <td style=\"padding:10px\">\n      <a href=\"${j.jobUrl || '#'}\" style=\"background:#1D9E75;color:white;padding:4px 10px;border-radius:6px;text-decoration:none\">הגש</a>\n    </td>\n  </tr>\n  <tr style=\"background:#f5f5f5\">\n    <td colspan=\"6\" style=\"padding:8px 10px;font-size:12px\">\n      <strong style=\"color:#3B6D11\">✓ חוזקות:</strong> ${(j.strengths||[]).join(' · ')}<br>\n      <strong style=\"color:#A32D2D\">✗ פערים:</strong> ${(j.gaps||[]).join(' · ')}\n    </td>\n  </tr>\n  <tr style=\"background:#fafff8\">\n    <td colspan=\"6\" style=\"padding:8px 10px;font-size:12px\">\n      <strong style=\"color:#185FA5\">✎ שיפורי קו\"ח:</strong>\n      <ul style=\"margin:4px 0 8px 20px;padding:0\">${improveCv}</ul>\n      <strong style=\"color:#185FA5\">📚 קורסים מומלצים:</strong>\n      <ul style=\"margin:4px 0 4px 20px;padding:0\">${improveSkills}</ul>\n    </td>\n  </tr>\n  <tr style=\"border-bottom:3px solid #ccc\">\n    <td colspan=\"6\" style=\"padding:8px 10px;font-size:13px;direction:ltr;line-height:1.7\">\n      <strong>Cover letter:</strong><br>${letter}\n    </td>\n  </tr>`;\n}).join('');\n\nconst today = new Date().toLocaleDateString('he-IL');\nconst html = `<div style=\"font-family:Arial,sans-serif;max-width:800px;margin:auto;direction:rtl\">\n  <h2 style=\"color:#1D9E75;border-bottom:2px solid #1D9E75;padding-bottom:8px\">משרות חדשות לצביקה — ${today}</h2>\n  <p>נמצאו <strong style=\"color:#1D9E75\">${jobs.length}</strong> משרות עם ציון 55+</p>\n  <table style=\"width:100%;border-collapse:collapse\">\n    <thead><tr style=\"background:#f0f0f0\">\n      <th style=\"padding:10px;text-align:right\">תפקיד</th>\n      <th style=\"padding:10px;text-align:right\">חברה</th>\n      <th style=\"padding:10px;text-align:right\">מיקום</th>\n      <th style=\"padding:10px\">ציון</th>\n      <th style=\"padding:10px\">סיכוי</th>\n      <th style=\"padding:10px\">קישור</th>\n    </tr></thead>\n    <tbody>${rows}</tbody>\n  </table>\n</div>`;\n\nreturn [{ json: { html, count: jobs.length } }];"
+      },
+      "id": "9f6412c2-a471-4073-9502-aa94944bd527",
+      "name": "Compose Email",
+      "type": "n8n-nodes-base.code",
+      "position": [
+        0,
+        1264
+      ],
+      "typeVersion": 2
+    },
+    {
+      "parameters": {
+        "sendTo": "Zpc107@gmail.com",
+        "subject": "=🎯 {{$json.count}} משרות חדשות — {{$now.format('DD/MM/YYYY')}}",
+        "message": "={{$json.html}}",
+        "options": {}
+      },
+      "id": "2720d80f-5f99-4487-a8da-5e0d5593fbc1",
+      "name": "Gmail — Send Digest",
+      "type": "n8n-nodes-base.gmail",
+      "position": [
+        0,
+        1408
+      ],
+      "typeVersion": 2.2,
+      "webhookId": "2d62a7cb-c739-4d6c-b8cc-22c4c62cae44",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "sOyD4TAkLqYoPfze",
+          "name": "Gmail account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "modelId": {
+          "__rl": true,
+          "value": "claude-sonnet-4-6",
+          "mode": "list",
+          "cachedResultName": "claude-sonnet-4-6"
+        },
+        "messages": {
+          "values": [
+            {
+              "content": "=נתח את המשרה הבאה עבור צביקה רטיג.\n\nCV:\n- Technical Project Manager / Release Manager, KMS Lighthouse (אוג 2025-ינו 2026):\n  SDLC מלא, CI/CD pipeline coordination עם DevOps, sprint planning, go/no-go decisions,\n  תיאום R&D/QA/Product/Operations, ניהול 3+ סביבות production, Jira/Confluence\n\n- Project Manager & Customer Success Lead, KMS Lighthouse (מרץ 2022-אוג 2025):\n  SaaS enterprise implementations, 20+ לקוחות גלובליים, תרגום דרישות לטכני,\n  תיאום cross-functional, הכשרות, Agile/Scrum\n\n- כישורים: Project Management, Agile/Scrum, Release Management, CI/CD Pipeline Coordination,\n  Jira/Confluence, SDLC, Stakeholder Governance, Azure AZ-900 (FinOps), AI enthusiast\n\n- פערים: אין ניסיון hands-on ב-DevOps/Cloud infrastructure, אין CI/CD כתיבת pipelines\n\nמשרה:\nTitle: {{$json.title}}\nCompany: {{$json.company}}\nLocation: {{$json.location}}\nDescription: {{$json.description}}\nJobUrl: {{$json.jobUrl}}\n\nהחזר JSON בלבד ללא markdown:\n{\"title\":\"שם התפקיד\",\"company\":\"שם החברה\",\"location\":\"מיקום\",\"jobUrl\":\"קישור\",\"score\":72,\"verdict\":\"Good\",\"probability\":\"22%\",\"strengths\":[\"s1\",\"s2\",\"s3\"],\"gaps\":[\"g1\",\"g2\"],\"improve_cv\":[\"שיפור 1\",\"שיפור 2\"],\"improve_skills\":[\"קורס 1\",\"קורס 2\"],\"cover_letter\": \"Dear Hiring Manager,\\n\\nContent...\\n\\nBest,\\nZvika Rettig\\n050-9911712 | Zpc107@gmail.com\"}"
+            }
+          ]
+        },
+        "simplify": false,
+        "options": {
+          "system": "You are a strict and honest career advisor. Return ONLY valid JSON, no markdown, no backticks.  STRICT SCORING RULES: - Score 80-100: Role is clearly TPM/Release Manager/Program Manager with SDLC ownership. Zvika meets 80%+ of requirements. - Score 65-79: Strong match. Role is delivery/project focused, Zvika meets 60-79% of requirements. - Score 55-64: Borderline. Include only if the core responsibilities align well despite some gaps. - Score below 55: Reject.  AUTOMATIC DISQUALIFIERS — apply before any analysis:  If the role is Product Manager with roadmap ownership, A/B testing, or KPI definition → Maximum score: 30. Do not exceed this under any circumstances.  If the role requires hands-on software development or coding as a Must → Maximum score: 20.  If the role requires B.Sc/M.Sc in CS/EE as a Must → Deduct 15 points from the final score.  If the role is in heavy industry (manufacturing, aviation, hardware) with no domain experience → Maximum score: 35.  If the role is Cybersecurity Operations / SOC / Malware Research / Threat Intelligence — requiring deep cyber domain knowledge → Maximum score: 35.  If the role is TPM / PM / Delivery Manager at a cybersecurity company — requiring delivery skills in a security-aware environment, not deep cyber expertise → Score normally. Note that Zvika has experience managing release cycles in information-sensitive environments and coordinating security-related features across R&D and QA teams.  IMPORTANT: - \"Project Manager\" alone is NOT enough — verify it is delivery/execution focused - A role mentioning \"Agile\" or \"Jira\" is NOT automatically a match - Be skeptical. When in doubt, score lower. - SQL is a developing skill — do not penalize heavily if other requirements are met  The cover_letter field must be in English. Write a concise, engaging cover letter (max 3 short paragraphs): - Paragraph 1: One punchy sentence on why THIS specific role excites you. Be specific — mention the company name and something unique about them. - Paragraph 2: Two sentences max — your single strongest relevant achievement that directly maps to their biggest need. - Paragraph 3: One confident closing sentence. No \"I believe I would be a great fit\" clichés. Tone: Direct, confident, human. No corporate fluff. Write as Zvika would speak, not as a template. Total length: 150-200 words maximum.  improve_cv: 2-3 specific suggestions to rephrase existing CV entries to better match this job. improve_skills: 2-3 short courses or certifications (under 10 hours each) that would bridge the gaps for this specific role.",
+          "maxTokens": 2000
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.anthropic",
+      "typeVersion": 1,
+      "position": [
+        -80,
+        800
+      ],
+      "id": "81b8314d-afeb-481b-9d29-89d18ac28f70",
+      "name": "Message a model",
+      "credentials": {
+        "anthropicApi": {
+          "id": "HXK2oXrO01BQ9iE6",
+          "name": "Anthropic account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "aggregate": "aggregateAllItemData",
+        "destinationFieldName": "jobs",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.aggregate",
+      "typeVersion": 1,
+      "position": [
+        0,
+        1152
+      ],
+      "id": "925929f1-1492-4f40-ba96-dc10d91f0b64",
+      "name": "Aggregate"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "3fd7b3b5-2941-404b-bbc0-7fc99a6f88a5",
+              "leftValue": "={{$json.score}}",
+              "rightValue": 55,
+              "operator": {
+                "type": "number",
+                "operation": "gte"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "9bf11236-b68e-4e60-a268-33d4c4b4e510",
+      "name": "Filter Score 55+",
+      "type": "n8n-nodes-base.if",
+      "position": [
+        0,
+        1024
+      ],
+      "typeVersion": 2.3
+    }
+  ],
+  "pinData": {
+    "Webhook": [
+      {
+        "json": {
+          "headers": {
+            "host": "primary-production-71a7.up.railway.app",
+            "user-agent": "axios/1.16.0",
+            "content-length": "3292",
+            "accept": "application/json, text/plain, */*",
+            "accept-encoding": "gzip, compress, deflate, br",
+            "content-type": "application/json",
+            "traceparent": "00-7e243ba48ed942f2ea790c353239b2ad-25fd889c89e90b77-01",
+            "x-apify-request-origin": "WEBHOOK",
+            "x-apify-webhook": "yo",
+            "x-apify-webhook-dispatch-id": "a2eJUD9ReGwaWFEQ0",
+            "x-forwarded-for": "13.216.80.7, 152.233.47.65",
+            "x-forwarded-host": "primary-production-71a7.up.railway.app",
+            "x-forwarded-proto": "https",
+            "x-railway-edge": "railway/us-east4-eqdc4a",
+            "x-railway-request-id": "RXn2WiElTjWwWJaqGbGh5g",
+            "x-real-ip": "13.216.80.7",
+            "x-request-start": "1781758812229"
+          },
+          "params": {},
+          "query": {},
+          "body": {
+            "userId": "jTbTdbpxZgkBvEMah",
+            "createdAt": "2026-06-18T05:00:11.285Z",
+            "eventType": "ACTOR.RUN.SUCCEEDED",
+            "eventData": {
+              "actorId": "2rJKkhh7vjpX7pvjg",
+              "actorTaskId": "oJKlAUHQ9tYIjAmke",
+              "actorRunId": "pd1laegYRVBqfWfaq"
+            },
+            "resource": {
+              "id": "pd1laegYRVBqfWfaq",
+              "actId": "2rJKkhh7vjpX7pvjg",
+              "userId": "jTbTdbpxZgkBvEMah",
+              "actorTaskId": "oJKlAUHQ9tYIjAmke",
+              "startedAt": "2026-06-18T05:00:00.617Z",
+              "finishedAt": "2026-06-18T05:00:04.962Z",
+              "status": "SUCCEEDED",
+              "meta": {
+                "origin": "API",
+                "userAgent": "n8n"
+              },
+              "stats": {
+                "inputBodyLen": 574,
+                "migrationCount": 0,
+                "rebootCount": 0,
+                "restartCount": 0,
+                "durationMillis": 4083,
+                "resurrectCount": 0,
+                "runTimeSecs": 4.083,
+                "metamorph": 0,
+                "computeUnits": 0.004536666666666666,
+                "memAvgBytes": 109677758.66738491,
+                "memMaxBytes": 184856576,
+                "memCurrentBytes": 0,
+                "cpuAvgUsage": 14.311661601654903,
+                "cpuMaxUsage": 52.90909090909091,
+                "cpuCurrentUsage": 0,
+                "netRxBytes": 1894,
+                "netTxBytes": 492
+              },
+              "options": {
+                "build": "latest",
+                "timeoutSecs": 900,
+                "memoryMbytes": 4096,
+                "maxItems": 98,
+                "maxTotalChargeUsd": 0.068931,
+                "isMaxTotalChargeUsdSetByUser": false,
+                "diskMbytes": 8192
+              },
+              "buildId": "7mbJA6FElnUgiP5jE",
+              "exitCode": 0,
+              "defaultKeyValueStoreId": "HBuj5ehNyQCwKpHiv",
+              "defaultDatasetId": "F6xgpaIWnmYEFWH41",
+              "defaultRequestQueueId": "hs1BBscIVi8q7K7Ju",
+              "storageIds": {
+                "keyValueStores": {
+                  "default": "HBuj5ehNyQCwKpHiv"
+                },
+                "datasets": {
+                  "default": "F6xgpaIWnmYEFWH41"
+                },
+                "requestQueues": {
+                  "default": "hs1BBscIVi8q7K7Ju"
+                }
+              },
+              "pricingInfo": {
+                "minimalMaxTotalChargeUsd": null,
+                "pricingModel": "PAY_PER_EVENT",
+                "isPriceChangeNotificationSuppressed": false,
+                "startedAt": "2026-03-27T18:19:08.788Z",
+                "createdAt": "2026-03-13T18:19:10.547Z",
+                "apifyMarginPercentage": 0.2,
+                "notifiedAboutFutureChangeAt": "2026-03-13T18:19:37.916Z",
+                "pricingPerEvent": {
+                  "actorChargeEvents": {
+                    "apify-default-dataset-item": {
+                      "eventTitle": "result",
+                      "eventDescription": "Single result in the default dataset.",
+                      "isOneTimeEvent": false,
+                      "isPrimaryEvent": true,
+                      "eventPriceUsd": 0.0007
+                    },
+                    "apify-actor-start": {
+                      "eventTitle": "Actor Start",
+                      "eventDescription": "Charged when the Actor starts running. Number of events charged depends on Actor memory (one event per GB, minimum one event).",
+                      "isOneTimeEvent": true,
+                      "eventPriceUsd": 0.005
+                    }
+                  }
+                }
+              },
+              "chargedEventCounts": {
+                "apify-default-dataset-item": 0,
+                "apify-actor-start": 4
+              },
+              "platformUsageBillingModel": "DEVELOPER",
+              "accountedChargedEventCounts": {
+                "apify-default-dataset-item": 0,
+                "apify-actor-start": 4
+              },
+              "generalAccess": "FOLLOW_USER_SETTING",
+              "buildNumber": "0.0.30",
+              "containerUrl": "https://ls8bbt74qbfr.runs.apify.net",
+              "usageTotalUsd": 0.02,
+              "links": {
+                "publicRunUrl": "https://console.apify.com/view/runs/pd1laegYRVBqfWfaq",
+                "consoleRunUrl": "https://console.apify.com/actors/2rJKkhh7vjpX7pvjg/runs/pd1laegYRVBqfWfaq",
+                "apiRunUrl": "https://api.apify.com/v2/actor-runs/pd1laegYRVBqfWfaq",
+                "apiDefaultDatasetUrl": "https://api.apify.com/v2/datasets/F6xgpaIWnmYEFWH41",
+                "apiDefaultKeyValueStoreUrl": "https://api.apify.com/v2/key-value-stores/HBuj5ehNyQCwKpHiv",
+                "containerRunUrl": "https://ls8bbt74qbfr.runs.apify.net"
+              },
+              "storages": {
+                "datasets": {
+                  "default": {
+                    "id": "F6xgpaIWnmYEFWH41",
+                    "apiUrl": "https://api.apify.com/v2/datasets/F6xgpaIWnmYEFWH41"
+                  }
+                },
+                "keyValueStores": {
+                  "default": {
+                    "id": "HBuj5ehNyQCwKpHiv",
+                    "apiUrl": "https://api.apify.com/v2/key-value-stores/HBuj5ehNyQCwKpHiv"
+                  }
+                },
+                "requestQueues": {
+                  "default": {
+                    "id": "hs1BBscIVi8q7K7Ju",
+                    "apiUrl": "https://api.apify.com/v2/request-queues/hs1BBscIVi8q7K7Ju"
+                  }
+                }
+              }
+            }
+          },
+          "webhookUrl": "https://primary-production-71a7.up.railway.app/webhook/8a35c86d-d0ae-4e28-a269-f0450797a7a5",
+          "executionMode": "production"
+        },
+        "pairedItem": {
+          "item": 0
+        }
+      }
+    ]
+  },
+  "connections": {
+    "Schedule — Weekdays 8am": {
+      "main": [
+        [
+          {
+            "node": "Apify — Trigger Scraper Run",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Extract Dataset ID",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract Dataset ID": {
+      "main": [
+        [
+          {
+            "node": "Fetch Jobs from Apify",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch Jobs from Apify": {
+      "main": [
+        [
+          {
+            "node": "Normalize Jobs",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Normalize Jobs": {
+      "main": [
+        [
+          {
+            "node": "Message a model",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Claude Response": {
+      "main": [
+        [
+          {
+            "node": "Filter Score 55+",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Compose Email": {
+      "main": [
+        [
+          {
+            "node": "Gmail — Send Digest",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Message a model": {
+      "main": [
+        [
+          {
+            "node": "Parse Claude Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Aggregate": {
+      "main": [
+        [
+          {
+            "node": "Compose Email",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Filter Score 55+": {
+      "main": [
+        [
+          {
+            "node": "Aggregate",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "c7a99ae1-1838-4fb1-b8eb-a0151485c1f8",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "ef5112cc40662ba7b1db2d867295fd2d6bd0b81930f92ecb51f61ed6169b395b"
+  },
+  "nodeGroups": [],
+  "id": "XGLOeCEkagBfTvfa",
+  "tags": []
+}
