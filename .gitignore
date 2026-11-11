@@ -1,0 +1,18 @@
+# Secrets / local config
+.env
+*.env
+!.env.example
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+
+# Private data: CVs, digests, raw scrape dumps
+private/
+cv/
+*.cv.txt
+data/raw/
+data/cache/
+*.log

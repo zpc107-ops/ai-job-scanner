@@ -61,7 +61,7 @@
     {
       "parameters": {
         "httpMethod": "POST",
-        "path": "8a35c86d-d0ae-4e28-a269-f0450797a7a5",
+        "path": "REPLACE_WITH_WEBHOOK_PATH",
         "responseMode": "responseNode",
         "options": {}
       },
@@ -167,7 +167,7 @@
     },
     {
       "parameters": {
-        "sendTo": "Zpc107@gmail.com",
+        "sendTo": "<EMAIL>",
         "subject": "=🎯 {{$json.count}} משרות חדשות — {{$now.format('DD/MM/YYYY')}}",
         "message": "={{$json.html}}",
         "options": {}
@@ -199,7 +199,7 @@
         "messages": {
           "values": [
             {
-              "content": "=נתח את המשרה הבאה עבור צביקה רטיג.\n\nCV:\n- Technical Project Manager / Release Manager, KMS Lighthouse (אוג 2025-ינו 2026):\n  SDLC מלא, CI/CD pipeline coordination עם DevOps, sprint planning, go/no-go decisions,\n  תיאום R&D/QA/Product/Operations, ניהול 3+ סביבות production, Jira/Confluence\n\n- Project Manager & Customer Success Lead, KMS Lighthouse (מרץ 2022-אוג 2025):\n  SaaS enterprise implementations, 20+ לקוחות גלובליים, תרגום דרישות לטכני,\n  תיאום cross-functional, הכשרות, Agile/Scrum\n\n- כישורים: Project Management, Agile/Scrum, Release Management, CI/CD Pipeline Coordination,\n  Jira/Confluence, SDLC, Stakeholder Governance, Azure AZ-900 (FinOps), AI enthusiast\n\n- פערים: אין ניסיון hands-on ב-DevOps/Cloud infrastructure, אין CI/CD כתיבת pipelines\n\nמשרה:\nTitle: {{$json.title}}\nCompany: {{$json.company}}\nLocation: {{$json.location}}\nDescription: {{$json.description}}\nJobUrl: {{$json.jobUrl}}\n\nהחזר JSON בלבד ללא markdown:\n{\"title\":\"שם התפקיד\",\"company\":\"שם החברה\",\"location\":\"מיקום\",\"jobUrl\":\"קישור\",\"score\":72,\"verdict\":\"Good\",\"probability\":\"22%\",\"strengths\":[\"s1\",\"s2\",\"s3\"],\"gaps\":[\"g1\",\"g2\"],\"improve_cv\":[\"שיפור 1\",\"שיפור 2\"],\"improve_skills\":[\"קורס 1\",\"קורס 2\"],\"cover_letter\": \"Dear Hiring Manager,\\n\\nContent...\\n\\nBest,\\nZvika Rettig\\n050-9911712 | Zpc107@gmail.com\"}"
+              "content": "=נתח את המשרה הבאה עבור צביקה רטיג.\n\nCV:\n{{CV_TEXT — paste the CV summary here in n8n; never commit it}}\n\nמשרה:\nTitle: {{$json.title}}\nCompany: {{$json.company}}\nLocation: {{$json.location}}\nDescription: {{$json.description}}\nJobUrl: {{$json.jobUrl}}\n\nהחזר JSON בלבד ללא markdown:\n{\"title\":\"שם התפקיד\",\"company\":\"שם החברה\",\"location\":\"מיקום\",\"jobUrl\":\"קישור\",\"score\":72,\"verdict\":\"Good\",\"probability\":\"22%\",\"strengths\":[\"s1\",\"s2\",\"s3\"],\"gaps\":[\"g1\",\"g2\"],\"improve_cv\":[\"שיפור 1\",\"שיפור 2\"],\"improve_skills\":[\"קורס 1\",\"קורס 2\"],\"cover_letter\": \"Dear Hiring Manager,\\n\\nContent...\\n\\nBest,\\nZvika Rettig\\n<PHONE> | <EMAIL>\"}"
             }
           ]
         },
@@ -273,174 +273,7 @@
       "typeVersion": 2.3
     }
   ],
-  "pinData": {
-    "Webhook": [
-      {
-        "json": {
-          "headers": {
-            "host": "primary-production-71a7.up.railway.app",
-            "user-agent": "axios/1.16.0",
-            "content-length": "3292",
-            "accept": "application/json, text/plain, */*",
-            "accept-encoding": "gzip, compress, deflate, br",
-            "content-type": "application/json",
-            "traceparent": "00-7e243ba48ed942f2ea790c353239b2ad-25fd889c89e90b77-01",
-            "x-apify-request-origin": "WEBHOOK",
-            "x-apify-webhook": "yo",
-            "x-apify-webhook-dispatch-id": "a2eJUD9ReGwaWFEQ0",
-            "x-forwarded-for": "13.216.80.7, 152.233.47.65",
-            "x-forwarded-host": "primary-production-71a7.up.railway.app",
-            "x-forwarded-proto": "https",
-            "x-railway-edge": "railway/us-east4-eqdc4a",
-            "x-railway-request-id": "RXn2WiElTjWwWJaqGbGh5g",
-            "x-real-ip": "13.216.80.7",
-            "x-request-start": "1781758812229"
-          },
-          "params": {},
-          "query": {},
-          "body": {
-            "userId": "jTbTdbpxZgkBvEMah",
-            "createdAt": "2026-06-18T05:00:11.285Z",
-            "eventType": "ACTOR.RUN.SUCCEEDED",
-            "eventData": {
-              "actorId": "2rJKkhh7vjpX7pvjg",
-              "actorTaskId": "oJKlAUHQ9tYIjAmke",
-              "actorRunId": "pd1laegYRVBqfWfaq"
-            },
-            "resource": {
-              "id": "pd1laegYRVBqfWfaq",
-              "actId": "2rJKkhh7vjpX7pvjg",
-              "userId": "jTbTdbpxZgkBvEMah",
-              "actorTaskId": "oJKlAUHQ9tYIjAmke",
-              "startedAt": "2026-06-18T05:00:00.617Z",
-              "finishedAt": "2026-06-18T05:00:04.962Z",
-              "status": "SUCCEEDED",
-              "meta": {
-                "origin": "API",
-                "userAgent": "n8n"
-              },
-              "stats": {
-                "inputBodyLen": 574,
-                "migrationCount": 0,
-                "rebootCount": 0,
-                "restartCount": 0,
-                "durationMillis": 4083,
-                "resurrectCount": 0,
-                "runTimeSecs": 4.083,
-                "metamorph": 0,
-                "computeUnits": 0.004536666666666666,
-                "memAvgBytes": 109677758.66738491,
-                "memMaxBytes": 184856576,
-                "memCurrentBytes": 0,
-                "cpuAvgUsage": 14.311661601654903,
-                "cpuMaxUsage": 52.90909090909091,
-                "cpuCurrentUsage": 0,
-                "netRxBytes": 1894,
-                "netTxBytes": 492
-              },
-              "options": {
-                "build": "latest",
-                "timeoutSecs": 900,
-                "memoryMbytes": 4096,
-                "maxItems": 98,
-                "maxTotalChargeUsd": 0.068931,
-                "isMaxTotalChargeUsdSetByUser": false,
-                "diskMbytes": 8192
-              },
-              "buildId": "7mbJA6FElnUgiP5jE",
-              "exitCode": 0,
-              "defaultKeyValueStoreId": "HBuj5ehNyQCwKpHiv",
-              "defaultDatasetId": "F6xgpaIWnmYEFWH41",
-              "defaultRequestQueueId": "hs1BBscIVi8q7K7Ju",
-              "storageIds": {
-                "keyValueStores": {
-                  "default": "HBuj5ehNyQCwKpHiv"
-                },
-                "datasets": {
-                  "default": "F6xgpaIWnmYEFWH41"
-                },
-                "requestQueues": {
-                  "default": "hs1BBscIVi8q7K7Ju"
-                }
-              },
-              "pricingInfo": {
-                "minimalMaxTotalChargeUsd": null,
-                "pricingModel": "PAY_PER_EVENT",
-                "isPriceChangeNotificationSuppressed": false,
-                "startedAt": "2026-03-27T18:19:08.788Z",
-                "createdAt": "2026-03-13T18:19:10.547Z",
-                "apifyMarginPercentage": 0.2,
-                "notifiedAboutFutureChangeAt": "2026-03-13T18:19:37.916Z",
-                "pricingPerEvent": {
-                  "actorChargeEvents": {
-                    "apify-default-dataset-item": {
-                      "eventTitle": "result",
-                      "eventDescription": "Single result in the default dataset.",
-                      "isOneTimeEvent": false,
-                      "isPrimaryEvent": true,
-                      "eventPriceUsd": 0.0007
-                    },
-                    "apify-actor-start": {
-                      "eventTitle": "Actor Start",
-                      "eventDescription": "Charged when the Actor starts running. Number of events charged depends on Actor memory (one event per GB, minimum one event).",
-                      "isOneTimeEvent": true,
-                      "eventPriceUsd": 0.005
-                    }
-                  }
-                }
-              },
-              "chargedEventCounts": {
-                "apify-default-dataset-item": 0,
-                "apify-actor-start": 4
-              },
-              "platformUsageBillingModel": "DEVELOPER",
-              "accountedChargedEventCounts": {
-                "apify-default-dataset-item": 0,
-                "apify-actor-start": 4
-              },
-              "generalAccess": "FOLLOW_USER_SETTING",
-              "buildNumber": "0.0.30",
-              "containerUrl": "https://ls8bbt74qbfr.runs.apify.net",
-              "usageTotalUsd": 0.02,
-              "links": {
-                "publicRunUrl": "https://console.apify.com/view/runs/pd1laegYRVBqfWfaq",
-                "consoleRunUrl": "https://console.apify.com/actors/2rJKkhh7vjpX7pvjg/runs/pd1laegYRVBqfWfaq",
-                "apiRunUrl": "https://api.apify.com/v2/actor-runs/pd1laegYRVBqfWfaq",
-                "apiDefaultDatasetUrl": "https://api.apify.com/v2/datasets/F6xgpaIWnmYEFWH41",
-                "apiDefaultKeyValueStoreUrl": "https://api.apify.com/v2/key-value-stores/HBuj5ehNyQCwKpHiv",
-                "containerRunUrl": "https://ls8bbt74qbfr.runs.apify.net"
-              },
-              "storages": {
-                "datasets": {
-                  "default": {
-                    "id": "F6xgpaIWnmYEFWH41",
-                    "apiUrl": "https://api.apify.com/v2/datasets/F6xgpaIWnmYEFWH41"
-                  }
-                },
-                "keyValueStores": {
-                  "default": {
-                    "id": "HBuj5ehNyQCwKpHiv",
-                    "apiUrl": "https://api.apify.com/v2/key-value-stores/HBuj5ehNyQCwKpHiv"
-                  }
-                },
-                "requestQueues": {
-                  "default": {
-                    "id": "hs1BBscIVi8q7K7Ju",
-                    "apiUrl": "https://api.apify.com/v2/request-queues/hs1BBscIVi8q7K7Ju"
-                  }
-                }
-              }
-            }
-          },
-          "webhookUrl": "https://primary-production-71a7.up.railway.app/webhook/8a35c86d-d0ae-4e28-a269-f0450797a7a5",
-          "executionMode": "production"
-        },
-        "pairedItem": {
-          "item": 0
-        }
-      }
-    ]
-  },
+  "pinData": {},
   "connections": {
     "Schedule — Weekdays 8am": {
       "main": [
@@ -565,8 +398,7 @@
   },
   "versionId": "c7a99ae1-1838-4fb1-b8eb-a0151485c1f8",
   "meta": {
-    "templateCredsSetupCompleted": true,
-    "instanceId": "ef5112cc40662ba7b1db2d867295fd2d6bd0b81930f92ecb51f61ed6169b395b"
+    "templateCredsSetupCompleted": true
   },
   "nodeGroups": [],
   "id": "XGLOeCEkagBfTvfa",

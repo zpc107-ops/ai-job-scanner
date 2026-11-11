@@ -174,6 +174,37 @@ The pipeline is duplicated per user, each with:
 
 ---
 
+## 🏢 Source 2: Company Career Pages (in progress)
+
+Jobs straight from the career pages of ~276 partner companies listed on the Elevation talent portal.
+
+### Phase 1: company list + ATS detection ✅
+`scripts/build_companies.py` builds `data/companies.csv`:
+1. Renders the portal (Playwright) and reads each company card: name, category, careers URL.
+2. Excludes LinkedIn links (already covered by Source 1).
+3. Detects the ATS behind each careers page from the URL, the HTML, or a rendered page
+   (iframes, network calls, plus one hop to an "open positions" link). Supported fingerprints include
+   Comeet, Greenhouse, Lever, Ashby, SmartRecruiters, Workday, Workable, Jobvite, Taleo, Eightfold and several Israeli ATSs (Dueto, Civi, Adam, TopMatch, Wanted).
+4. For ATSs with a public API (Greenhouse, Lever, Ashby, SmartRecruiters, Workday, Comeet) it calls the
+   endpoint once and records the live job count (`api_ok`, `jobs_count`).
+
+Polite by design: generic User-Agent, ≥1s between requests to the same domain, timeouts, retries with backoff,
+and one broken site never fails the run (`status`/`error` columns).
+
+```bash
+python -m venv .venv
+.venv\Scripts\python -m pip install -r requirements.txt
+.venv\Scripts\python -m playwright install chromium
+.venv\Scripts\python scripts\build_companies.py            # full run, ~15-20 min
+.venv\Scripts\python scripts\build_companies.py --limit 20 --no-render   # quick test
+```
+
+Next: Phase 2 (n8n branch for the public-API companies), Phase 3 (Playwright + Claude scraper on GitHub Actions for the rest).
+
+The n8n workflow export lives in `n8n/`. The CV text, contact details and webhook path are replaced with placeholders, so fill them in after import.
+
+---
+
 ## 🛠️ Built By
 
 **Zvika Rettig** — Technical Project Manager & Release Manager  
